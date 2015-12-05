@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+<script>
+    var log=console.log;
+    var ws=new WebSocket("ws://localhost:8080");
+    ws.onopen = function (e) {
+        console.log("Connected to WebSocket server.",e);
+        sendMessage("Conan");
+    } ;
+
+    ws.onclose = function (e) {
+        console.log("Disconnected",e);
+    } ;
+
+    ws.onmessage = function(e) {
+        console.log("RECEIVED: " + e.data, e);
+        //ws.close();
+    }
+
+    ws.onerror = function (e) {
+        console.log('Error occured: ' + e.data,e);
+    } ;
+
+    var sendMessage = function(msg){
+        ws.send("JAVASTAGE");
+        console.log("SEND : "+ msg);
+    }
+
+    var send=function(a){
+        ws.send(JSON.stringify(a));
+    }
+</script>
+
+</body>
+</html>
