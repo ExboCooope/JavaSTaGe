@@ -32,3 +32,5 @@ Features:(sample)
 - A multiplayer connection scripts
 - A pause script
 - A test stage script
+- A multiplayer server script
+- A http server script
