@@ -65,15 +65,16 @@ function _unpackReplay(data){
     var k=_unpackReplayPool(v,q2,_replay_common_data[0].playern);
 }
 
-function upload(input) {
+function upload(file) {
     //支持chrome IE10
     if (window.FileReader) {
-        var file = input.files[0];
+        //var file = input.files[0];
         if(!file)return;
         var filename = file.name.split(".")[0];
         var reader = new FileReader();
         reader.onload = function() {
             _unpackReplay(this.result);
+            console.log("Replay loaded.")
         };
         reader.readAsArrayBuffer(file);
     }
@@ -85,3 +86,20 @@ function replay_test(){
     _replay_pool=[[1,2],[3,4],[5,6]];
     downloadFile("test.txt",packReplay());
 }
+
+(function(){
+    function dragOver(e){
+        e.stopPropagation();
+        e.preventDefault();
+        e.target.className = (e.type == "dragover" ? "hover" : "");
+    }
+    function FileSelectHandler(e) {
+        dragOver(e);
+
+        var files = e.target.files || e.dataTransfer.files;
+        upload(files[0]);
+    }
+    document.body.addEventListener("dragover", dragOver, false);
+    document.body.addEventListener("dragleave", dragOver, false);
+    document.body.addEventListener("drop", FileSelectHandler, false);
+})();

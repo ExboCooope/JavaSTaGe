@@ -3,7 +3,7 @@
  */
 
 function gSampleMultiplayer(oNextObject){
-    stg_mp_ip=[123,122,125,30,3010];
+    stg_mp_ip=[192,168,0,100,3010];
     var a1={};
     var a2={};
     var a3={};
@@ -59,7 +59,7 @@ function gSampleMultiplayer(oNextObject){
             stg_mp_status=2;
             stg_local_player_pos=stg_mp_slot;
             stg_players_number=2;
-            stgCreateInput(2);
+            stgCreateInput(3);
             console.log("Input created.");
             stgAddObject(oNextObject);
             stgDeleteSelf();
@@ -77,6 +77,6 @@ function gSampleMultiplayer(oNextObject){
         stgCreateInput(0);
         g_mitem.mtext="切换为多人模式";
         stgDeleteSelf();
-    }}
+    }};
     stgAddObject(a1);
 }

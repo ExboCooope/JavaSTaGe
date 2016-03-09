@@ -13,6 +13,7 @@ function sArrowRotateTo(arrow1,arrow2){
         t=t%PI2;
     }
     if(t>PI)t=t-PI2;
+    return t;
 }
 
 function sLookAt(vaP0,vaP1){

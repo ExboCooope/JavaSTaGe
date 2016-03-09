@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+<script>
+    var c=document.createElement("canvas");
+    c.width=1280;
+    c.height=800;
+    var ctx= c.getContext("2d");
+    document.body.appendChild(c);
+    var a=document.createElement("img");
+    a.src="texture.png";
+    var res=[];
+    var time=10;
+    a.onload=function(){
+        requestAnimationFrame(ts);
+    };
+
+
+    function ts(){
+
+        var t=(new Date()).getTime();
+        for(var i=0;i<10000;i++){
+            ctx.setTransform(1,0,0,1,0,0);
+            ctx.translate(Math.random()*1280,Math.random()*800);
+            ctx.rotate(Math.random()*360);
+            ctx.drawImage(a,0,0,20,20,-10,-10,20,20);
+        }
+        t=(new Date()).getTime()-t;
+        res.push(t);
+        if(time){
+            time--;
+            requestAnimationFrame(ts);
+        }else{
+            console.log(res);
+        }
+    }
+    function shader1_object_parser(oDMA,oObject,iIndex,iNew){
+        var gl=_gl;
+        if(oObject.update)iNew=1;
+        oObject.update=0;
+        var x=oObject.pos[0];
+        var y=oObject.pos[1];
+        var r=oObject.rotate[2]+(oObject.render.rotate||0);
+        oDMA.buffers[0].set([x,y,x,y,x,y,x,y],iIndex*8);
+        oDMA.buffers[4].set([r,r,r,r],iIndex*4);
+        if(iNew) {
+            oDMA.buffers[1].set(oObject.render.aRec,iIndex*8);
+            gl.bindBuffer(gl.ARRAY_BUFFER,oDMA.glbuffers[1]);
+            gl.bufferSubData(gl.ARRAY_BUFFER,iIndex*8*4,oObject.render.aRec);
+            oDMA.buffers[3].set(oObject.render.aColor,iIndex*16);
+            gl.bindBuffer(gl.ARRAY_BUFFER,oDMA.glbuffers[3]);
+            gl.bufferSubData(gl.ARRAY_BUFFER,iIndex*16*4,oObject.render.aColor);
+            oDMA.buffers[2].set(oObject.render.aUVT,iIndex*8);
+            gl.bindBuffer(gl.ARRAY_BUFFER,oDMA.glbuffers[2]);
+            gl.bufferSubData(gl.ARRAY_BUFFER,iIndex*8*4,oObject.render.aUVT);
+        }
+    }
+</script>
+
+</body>
+</html>

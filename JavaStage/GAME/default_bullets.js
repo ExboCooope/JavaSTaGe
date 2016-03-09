@@ -14,13 +14,14 @@ function stgCreate2DBulletTemplateA1(sTemplateName,sTextureName,vX,vY,vW,vH,iCol
     };
 }
 
-var _hit_box_tiny={};
+var _hit_box_tiny=new StgHitDef();
+_hit_box_tiny.range=1;
 var _hit_box_small=new StgHitDef();
 _hit_box_small.range=2;
 var _hit_box_medium=new StgHitDef();
 _hit_box_medium.range=4;
 var _hit_box_large=new StgHitDef();
-_hit_box_medium.range=8;
+_hit_box_large.range=14;
 var _hit_box_laser={};
 
 var PIUP=90*PI180;
@@ -50,7 +51,12 @@ function bullet00Assignment(){
     stgCreate2DBulletTemplateA1("mLD","bullet",0,336,32,32,32,0,PIUP,1,_hit_box_small,{move_rotate:1});
     stgCreate2DBulletTemplateA1("mLD2","bullet",0,368,32,32,32,0,PIUP,1,_hit_box_small,{move_rotate:1});
 
-    stgCreate2DBulletTemplateA1("lDY","bullet",0,432,64,64,64,0,PIUP,1,_hit_box_large,{move_rotate:1});
+    stgCreate2DBulletTemplateA1("lDY","bullet",0,448,64,64,64,0,PIUP,1,_hit_box_large,{move_rotate:1});
+
+    stgCreate2DBulletTemplateA1("plMainShot","siki_body",0,144,16,16,16,0,0,1,_hit_box_large,{move_rotate:1});
+    stgCreate2DBulletTemplateA1("plMainShot2","siki_body",192,144,64,16,0,0,0,1,_hit_box_large,{move_rotate:1,alpha:150});
+    stgCreate2DBulletTemplateA1("plMainShot3","siki_body",0,144+32,64,16,0,0,0,1,_hit_box_large,{move_rotate:1,alpha:150});
+
     stgAddShader("sprite_shader",default_2d_shader);
     stg_bullet_parser=render01BltParser;
 }

@@ -88,16 +88,18 @@ MenuHolderA1.prototype.script=function(){
     }
 
     var k=stg_system_input;
-
+    var flag0=0;
     if(that.rolldir==0){
         if(k[stg_const.KEY_UP] || k[stg_const.KEY_LEFT]) {
             that.rolldir=-1;
             that.rolllock=60;
             sel--;
+            flag0=1;
         }else if(k[stg_const.KEY_DOWN] || k[stg_const.KEY_RIGHT]) {
             that.rolldir=1;
             that.rolllock=60;
             sel++;
+            flag0=1;
         }
     }else if(that.rolldir==1){
         if(k[stg_const.KEY_DOWN] || k[stg_const.KEY_RIGHT]) {
@@ -105,7 +107,9 @@ MenuHolderA1.prototype.script=function(){
             if(that.rolllock<=0){
                 that.rolllock=10;
                 sel++;
+                flag0=1;
             }
+
         }else{
             that.rolllock=0;
             that.rolldir=0;
@@ -116,6 +120,7 @@ MenuHolderA1.prototype.script=function(){
             if(that.rolllock<=0){
                 that.rolllock=10;
                 sel--;
+                flag0=1;
             }
         }else{
             that.rolllock=0;
@@ -123,6 +128,7 @@ MenuHolderA1.prototype.script=function(){
         }
     }
     var pck=0;
+    if(flag0)stgPlaySE("se_select");
     sel=(sel+pool.length) %pool.length;
     while(!pool[sel].selectable && pck<pool.length){
         pck++;
@@ -140,7 +146,7 @@ MenuHolderA1.prototype.script=function(){
             TextMenuItem.sellock=1;
             pool[sel].on_select.menu_item=pool[sel];
             stgAddObject(pool[sel].on_select);
-
+            stgPlaySE("se_ok");
         }
     }else{
         TextMenuItem.sellock=0;
@@ -155,6 +161,7 @@ MenuHolderA1.prototype.script=function(){
             stgDeleteObject(this);
             TextMenuItem.backlock=1;
             if(that.menu_return)stgAddObject(that.menu_return);
+            stgPlaySE("se_cancel");
         }
     }else{
         TextMenuItem.backlock=0;
@@ -178,4 +185,22 @@ function defaultDrawBackground(sTexName){
         a1t--;
     };
     stgAddObject(a1);
+}
+
+function defaultShowBGM(sBGMName){
+    var a1=new RenderText(35,445);
+    a1.render.text="BGM: "+sBGMName;
+    a1.render.alpha=0;
+    a1.f=0;
+    a1.script=function(){
+        if(a1.f<=30){
+            a1.render.alpha=255*a1.f/30;
+        }else if(a1.f>210){
+            a1.render.alpha-=2;
+            if(a1.render.alpha<=0){
+                stgDeleteSelf();
+            }
+        }
+        a1.f++;
+    }
 }

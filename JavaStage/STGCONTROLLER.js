@@ -5,9 +5,16 @@
 var _key_pool=[];
 var _key_map=stg_const.KEY_MAP;
 var _key_snapshot=[];
+var stg_full_screen_key=70;
+var _o_width;
+var _o_height;
+var _last_full_screen;
 
 function _keyDownEvent(event){
     _key_pool[event.keyCode]=1;
+    if(event.keyCode==stg_full_screen_key){
+        document.body.webkitRequestFullScreen();
+    }
 }
 function _keyUpEvent(event){
     _key_pool[event.keyCode]=0;

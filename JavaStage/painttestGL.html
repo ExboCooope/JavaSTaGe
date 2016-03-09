@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+<script src="WebGL/shaders.js"></script>
+<script>
+
+    var c=document.createElement("canvas");
+    c.width=1280;
+    c.height=800;
+    var ctx= webglCreateFromCanvas(c);
+    document.body.appendChild(c);
+    var a=document.createElement("img");
+    a.src="texture.png";
+    var res=[];
+    var time=10;
+    a.onload=function(){
+        requestAnimationFrame(ts);
+    };
+    var objs=[];
+    webglCompileShader(WebGLShader.SpriteShaderSimple);
+    _webGlUniformInput(WebGLShader.SpriteShaderSimple,"uWindow",webgl2DMatrix(1280,800));
+
+    var d=new WebglDMA(WebGLShader.SpriteShaderSimple,11000);
+    d.objectParser=parser;
+    function ts(){
+        for(var i=0;i<10000;i++) {
+            if(!objs[i]){
+                objs[i]={};
+            }
+            objs[i].x=Math.random()*1280;
+            objs[i].y=Math.random()*800;
+            objs[i].r=Math.random()*360;
+        }
+        var t=(new Date()).getTime();
+        d.frameStart();
+        _webGlUniformInput(WebGLShader.SpriteShaderSimple,"texture",a);
+        for(var i=0;i<10000;i++){
+            d.parseObject(objs[i]);
+        }
+        d.draw();
+        t=(new Date()).getTime()-t;
+        res.push(t);
+        if(time){
+            time--;
+            requestAnimationFrame(ts);
+        }else{
+            console.log(res);
+        }
+    }
+    function parser(oDMA,oObject,iIndex,iNew){
+        var gl=_gl;
+
+        var x=oObject.x;
+        var y=oObject.y;
+        var r=oObject.r;
+        oDMA.buffers[0].set([x,y,x,y,x,y,x,y],iIndex*8);
+        oDMA.buffers[4].set([r,r,r,r],iIndex*4);
+        if(iNew) {
+            oDMA.buffers[1].set(ao.aRec,iIndex*8);
+            gl.bindBuffer(gl.ARRAY_BUFFER,oDMA.glbuffers[1]);
+            gl.bufferSubData(gl.ARRAY_BUFFER,iIndex*8*4,ao.aRec);
+            oDMA.buffers[3].set(ao.aColor,iIndex*16);
+            gl.bindBuffer(gl.ARRAY_BUFFER,oDMA.glbuffers[3]);
+            gl.bufferSubData(gl.ARRAY_BUFFER,iIndex*16*4,ao.aColor);
+            oDMA.buffers[2].set(ao.aUVT,iIndex*8);
+            gl.bindBuffer(gl.ARRAY_BUFFER,oDMA.glbuffers[2]);
+            gl.bufferSubData(gl.ARRAY_BUFFER,iIndex*8*4,ao.aUVT);
+        }
+    }
+    var ao={
+        aColor: new Float32Array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            // aRec:new Float32Array([0,0,1,0,1,1,0,1]),
+                aRec
+    :
+        new Float32Array([-10, -10, 10, -10, 10, 10, -10, 10]),
+                aUVT
+    :
+        new Float32Array([0, 0, 1, 0, 1, 1, 0, 1])
+    }
+</script>
+
+</body>
+</html>

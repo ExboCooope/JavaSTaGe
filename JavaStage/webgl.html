@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+<script src="WebGL/shaders.js"></script>
+<script src="WebGL/rendertarget.js"></script>
+<script src="WebGL/EMatrix.js"></script>
+<script src="WebGL/EMesh.js"></script>
+<script src="GAME/default_3d_shader.js"></script>
+<script src="STGCORE.js"></script>
+<script src="STGGLOBAL.js"></script>
+<script src="STGDISPLAY.js"></script>
+<script>
+    var a=stgCreateCanvas("1",640,480,stg_const.TEX_CANVAS3D);
+    stgShowCanvas("1",0,0,640,480,0);
+    default_3d_shader.shader_init();
+    //_webGlUniformInput(default_3d_shader,"uModel", EMat4().setIdentity());
+    _webGlUniformInput(default_3d_shader,"uView", EMat4().setPerspective(0.732,0.732,0,100).newLookAt([0,0,10],[0,0,0],[0,1,0]));
+    //_webGlUniformInput(default_3d_shader,"aPosition",EVec([0,0,7,6,0,0,0,6,0]));
+    //_webGlUniformInput(default_3d_shader,"aTexture",EVec([0,0,1,0,0,1]));
+    var t=document.createElement("img");
+    t.src="texture.png";
+    t.onload=function(){
+        //_webGlUniformInput(default_3d_shader,"texture",t);
+        //_gl.drawArrays(_gl.TRIANGLES,0,3);
+
+
+
+
+        k.setTexture(0,t);
+
+
+        var background_controller={
+            camera_p1:null,
+            camera_p2:null,
+            //matV:EMat4().setPerspective(0.732,0.732,1,500).newLookAt([0,5,0],[0,0,-3],[0,1,0])
+            matV:EMat4().setPerspective(0.732,0.732,0,500).newLookAt([0,5,0],[0,0,-3],[0,1,0])
+        };
+        _webGlUniformInput(default_3d_shader,"uView",background_controller.matV);
+        default_3d_shader.drawer(k);
+                var a=new EMesh();
+                a.addTriangle([-10,0,10],[10,0,10],[10,0,-100],[-1,-1],[1,-1],[1,10],0);
+                a.addTriangle([-10,0,10],[-10,0,-100],[10,0,-100],[-1,-1],[-1,10],[1,10],0);
+                a.compile();
+                a.setTexture(0,t);
+
+        default_3d_shader.drawer(a);
+    };
+
+    var k=new EMesh();
+    k.addTriangle([10,0,-100],[10,0,10],[-10,0,10],[0,0],[1,0],[0,1],0);
+    k.compile();
+
+
+
+
+</script>
+</body>
+</html>

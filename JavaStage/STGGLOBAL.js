@@ -99,6 +99,7 @@ var stg_const={
     TEX_CANVAS3D:3, //指canvas3d屏幕，支持写入
     TEX_CANVAS3D_TARGET:4, //webgl的rendertarget，支持写入和使用
     TEX_NONE:0, //非纹理，不支持纹理使用，但是可以用来存储信息
+    TEX_AUDIO:5,
 
     KEY_SHOT:0,
     KEY_SLOW:1,

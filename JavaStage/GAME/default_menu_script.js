@@ -3,26 +3,49 @@
  */
 default_menu_script={loaded:0};
 default_menu_script.init=function(){
+    stgPlaySE(null,"BGM");
+   // stg_refresher_type=1;
     stg_in_replay=0;
     var t=stg_target;
     if(!t.loaded) {
         stgLoadKeyMap();
         t.loaded=1;
         bullet00Assignment();
-        stgCreateImageTexture("siki_body", "pl13.png");
+        var tse=stgLoadSE("道中BGM","se/Peace.ogg");
+        tse.ready=1;
+        tse.loop=1;
+        stgLoadSE("se_alert","se/se_alert.wav").ready=1;
+        stgLoadSE("se_graze","se/se_graze.wav").ready=1;
+        stgLoadSE("se_select","se/se_select00.wav").ready=1;
+        stgLoadSE("se_dead","se/se_pldead00.wav").ready=1;
+        stgLoadSE("se_ok","se/se_ok00.wav").ready=1;
+        stgLoadSE("se_cancel","se/se_cancel00.wav").ready=1;
+        stgLoadSE("se_extend","se/se_extend.wav").ready=1;
+        stgCreateImageTexture("siki_body", "res/pl00.png");
         stgCreateImageTexture("pl_effect", "etama2.png");
+        loadItemSystem();
+
+
         stgCreateImageTexture("backTex", "Default_SystemBackground.png");
         stgCreateImageTexture("backTex1", "System_ScriptSelect_Background.png");
+        stgCreateImageTexture("3dTex1", "bg/grass2.png");
+        stgCreateImageTexture("3dTex2", "bg/wall.png");
+        stgCreateImageTexture("3dTex3", "bg/floor.png");
+        stgCreateImageTexture("fairy_red", "res/fairy_red.png");
+
         stg_pause_script = default_pause_script;
         stg_system_script = default_system_script;
         gLoadMenuSystem();
-        stgCreateCanvas("frame", 384, 448, stg_const.TEX_CANVAS2D);
+        stgCreateCanvas("zoom", 640, 480, stg_const.TEX_CANVAS3D);
+        stgCreateCanvas("frame", 384, 448, stg_const.TEX_CANVAS3D_TARGET);
        // stgCreateCanvas("frame", 384, 448, stg_const.TEX_CANVAS2D);
         stgCreateCanvas("back", 640, 480, stg_const.TEX_CANVAS2D);
         stgCreateCanvas("ui", 640, 480, stg_const.TEX_CANVAS2D);
-        stgShowCanvas("back", 0, 0, 0, 0, 0);
+
+       // stgShowCanvas("back", 0, 0, 0, 0, 0);
       //  stgShowCanvas("frame", 32, 16, 0, 0, 1);
-        stgShowCanvas("ui", 0, 0, 0, 0, 2);
+      //  stgShowCanvas("ui", 0, 0, 0, 0, 2);
+        stgShowCanvas("zoom", 0, 0, 0, 0, 2);
         stgAddShader("sprite_shader", default_2d_shader);
         //创建背景渲染器
         var a2 = new StgProcedure("back", 0, 19);
@@ -31,7 +54,7 @@ default_menu_script.init=function(){
         //创建游戏区渲染器
         a2 = new StgProcedure("frame", 20, 80);
         a2.background = "#888";
-        a2.shader_order = ["sprite_shader"];
+        a2.shader_order = ["sprite_shader","prim_shader"];
         stg_procedures["drawFrame"] = a2;
         //创建UI渲染器
         a2 = new StgProcedure("ui", 81, 100);
@@ -39,9 +62,21 @@ default_menu_script.init=function(){
         stg_procedures["drawUI"] = a2;
         //创建渲染流程
       //  stg_display = ["drawBackground", "drawFrame", "drawUI"];
-        stg_display = ["drawBackground", "drawUI"];
-
-
+        //stg_display = ["drawBackground", "drawUI"];
+        stgAddShader("test3d", default_3d_shader);
+        a2 = new StgProcedure("frame", 0, 20);
+        a2.shader_order = ["test3d"];
+        stg_procedures["draw3d"] = a2;
+        //
+        stgAddShader("ui_shader", default_ui_shader);
+        a2 = new StgProcedure("zoom", 0, -1);
+        a2.shader_order = ["ui_shader"];
+        a2.no_object_frame=1;
+        miscApplyAttr(a2,default_ui_shader.procedure_1);
+        stg_procedures["drawZoom"] = a2;
+        stg_display = ["drawBackground","draw3d","drawFrame","drawUI","drawZoom"];
+        stg_procedures["draw3d"].matV=EMat4().setIdentity();
+        stg_procedures["draw3d"].active=0;
         stg_wait_for_all_texture=1;
 
         stgCreateInput(0);
@@ -152,7 +187,9 @@ function gLoadMenuSystem(){
     }};
     g_replay_save=new MenuHolderA1([40,40],[0,30],g_replay_save);
     g_replay_save.finalize=function(){
-        stgHideCanvas("frame");
+        //stgHideCanvas("frame");
+        zoomerSetFrameAlpha(0);
+        stg_procedures["drawFrame"].active=0;
         stgClearCanvas("ui");
     };
     default_menu_script.menu1=new MenuHolderA1([40,40],[0,30],default_menu_script);
@@ -199,7 +236,8 @@ function gLoadMenuSystem(){
     default_menu_script.menu1.pushItem(a);
     a=new TextMenuItem("回放",1,1,{script:function(){    stgShowCanvas("frame", 32, 16, 0, 0, 1);
 
-        stg_display = ["drawBackground", "drawFrame", "drawUI"];replayStartLevel(0);stgDeleteSelf();}},1);
+        //stg_display = ["drawBackground", "drawFrame", "drawUI"];
+        replayStartLevel(0);stgDeleteSelf();}},1);
     default_menu_script.menu1.pushItem(a);
     a=new TextMenuItem("键位设置",1,1,{init:function(){temp_key=clone(_key_map);stgDeleteSelf();stgAddObject(g_keysetter)}},1);
     default_menu_script.menu1.pushItem(a);
@@ -294,9 +332,9 @@ var g_starter={common_data:{},player_sel:[],level:""};
 var temp_key=_key_map;
 
 g_starter.init=function(){
-    stgShowCanvas("frame", 32, 16, 0, 0, 1);
+   // stgShowCanvas("frame", 32, 16, 0, 0, 1);
 
-    stg_display = ["drawBackground", "drawFrame", "drawUI"];
+   // stg_display = ["drawBackground", "drawFrame", "drawUI"];
     //stg_players_number=g_starter.player_sel.length;
     //stg_local_player_pos=0;
     //stgCreateInput(0);

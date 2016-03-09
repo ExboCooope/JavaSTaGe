@@ -12,6 +12,9 @@ var PI180=PI/180;
 var atan2p=function(source,dest){
     return atan2(dest[1]-source[1],dest[0]-source[0]);
 };
+var atan2pr=function(source,dest){
+    return atan2(dest[1]-source[1],dest[0]-source[0])/PI180;
+};
 var sqrt2=function(source,dest){
     return sqrt((source[0]-dest[0])*(source[0]-dest[0])+(source[1]-dest[1])*(source[1]-dest[1]));
 };
@@ -55,7 +58,6 @@ function stgDist(p1,p2){
 }
 
 
-
 function StgObject(){
     this.script=null;
     this.move=null;
@@ -64,9 +66,19 @@ function StgObject(){
     this.hitby=null;
 }
 
+function stgApplyEnemy(e){
+    e.on_hit_by=default_enemy_onhitby;
+    return e;
+}
+
+function default_enemy_onhitby(bullet){
+    stg_target.life-=bullet.damage*(1-(stg_target.shot_resistance||0));
+}
+
 function StgRender(sShaderName){
     this.shader_name=sShaderName;
     this.procedures={};
+    this.scale=[1,1,1];
 }
 
 function StgProcedure(sTarget,iStartLayer,iEndLayer){
@@ -76,9 +88,11 @@ function StgProcedure(sTarget,iStartLayer,iEndLayer){
         this.layers[i]=1;
     }
     this.shader_order=[];
+    this.active=1;
 }
 
 function _tickMove(stgMove){
+
     stgMove.speed_angle+=stgMove.speed_angle_acceleration;
     if(!stgMove.speed_angleY){
         stgMove._speed[0]=stgMove.speed*cos(stgMove.speed_angle);
@@ -94,14 +108,16 @@ function _tickMove(stgMove){
     stgMove.pos[0]+=stgMove._speed[0];
     stgMove.pos[1]+=stgMove._speed[1];
     stgMove.pos[2]+=stgMove._speed[2];
-    stgMove._acceleration[0]=stgMove.acceleration*cos(stgMove.acceleration_angle);
-    stgMove._acceleration[1]=stgMove.acceleration*sin(stgMove.acceleration_angle);
-    stgMove._speed[0]+=stgMove._acceleration[0];
-    stgMove._speed[1]+=stgMove._acceleration[1];
-    stgMove._speed[2]+=stgMove._acceleration[2];
+    if(stgMove.acceleration){
+        stgMove._acceleration[0]=stgMove.acceleration*cos(stgMove.acceleration_angle);
+        stgMove._acceleration[1]=stgMove.acceleration*sin(stgMove.acceleration_angle);
+        stgMove._speed[0]+=stgMove._acceleration[0];
+        stgMove._speed[1]+=stgMove._acceleration[1];
+        stgMove._speed[2]+=stgMove._acceleration[2];
+    }
     stgMove.speed=sqrt( stgMove._speed[0]* stgMove._speed[0]+ stgMove._speed[1]* stgMove._speed[1]+ stgMove._speed[2]* stgMove._speed[2]);
     if(stgMove.max_speed && stgMove.speed>stgMove.max_speed)stgMove.speed=stgMove.max_speed;
-    stgMove.speed_angle=atan2(stgMove._speed[1],stgMove._speed[0]);
+    stgMove.speed_angle=stgMove.speed?atan2(stgMove._speed[1],stgMove._speed[0]):stgMove.speed_angle;
 }
 
 function _StgDefaultPlayer(stgPlayerObject){
@@ -126,15 +142,15 @@ function _StgDefaultPlayer(stgPlayerObject){
     stgPlayerObject.type=stg_const.OBJ_PLAYER;
     stgPlayerObject.score=0;
     stgPlayerObject.hiscore=0;
-
+    stgPlayerObject.item_attract_range=32;
     stgPlayerObject.counter_bomb_time=12;
     stgPlayerObject.down_time=30;
     stgPlayerObject.rebirth_time=30;
     stgPlayerObject.rebirth_x=192;
     stgPlayerObject.rebirth_y=400;
     stgPlayerObject.start_time=240;
-
-    stgPlayerObject.graze_range=15;
+    stgPlayerObject.content={score:0};
+    stgPlayerObject.graze_range=24;
     stgPlayerObject.layer=stg_const.LAYER_PLAYER;
 }
 
@@ -144,8 +160,9 @@ function _frameMoveCheck(){
 }
 
 function _stgMainLoop_Render(){
+    _runProcedure01();
     for(var i in stg_display){
-        _runProcedure(stg_display[i]);
+        _runProcedure2(stg_display[i]);
     }
 }
 function _stgMainLoop_RunScript(){
@@ -162,6 +179,7 @@ function _stgMainLoop_RunScript(){
 }
 function _stgMainLoop_RemoveObjects(){
     var i;
+    /*
     for(i=0;i<_pool.length;i++){
         if(_pool[i].remove){
             if(_pool[i].finalize){
@@ -181,6 +199,19 @@ function _stgMainLoop_RemoveObjects(){
         }
     }
     _pool.length=j;
+    */
+    var pool=[];
+    for(i=0;i<_pool.length;i++){
+        if(_pool[i].remove){
+            if(_pool[i].finalize){
+                stg_target=_pool[i];
+                _pool[i].finalize();
+            }
+        }else{
+            pool.push(_pool[i]);
+        }
+    }
+    _pool=pool;
 }
 
 function _stgMainLoop(){
@@ -201,6 +232,7 @@ function _stgMainLoop(){
     _stgMainLoop_Engine();
     _stgMainLoop_Hit();
     _stgMainLoop_PlayerState();
+    _runProcedure0();
     _stgMainLoop_RunScript();
     _stgMainLoop_RemoveObjects();
     _stgMainLoop_Render();
@@ -236,6 +268,7 @@ function _stgMainLoop_Hit(){
                             b.grazed[a.slot]=1;
                             a.graze++;
                             if(a.on_graze){
+                                stg_target=a;
                                 a.on_graze(b);
                             }
                         }
@@ -245,22 +278,29 @@ function _stgMainLoop_Hit(){
                         //console.log(b);
                         a.hit_by_list.push(b);
                         b.hit_list.push(a);
+                        stg_target=b;
+                        if(b.on_hit)b.on_hit(a);
+                        if(b.on_hit)b.on_hit(a);
+                        stg_target=a;
+                        if(a.on_hit_by)a.on_hit_by(b);
+
                         if(b.type==stg_const.OBJ_BULLET){
-                            if(d< a.graze)
-                                if(!b.invincible){
-                                    if(!a.invincible && a.state==stg_const.PLAYER_NORMAL){
-                                        a.state=stg_const.PLAYER_HIT;
-                                        a.invincible= a.counter_bomb_time;
-                                    }
-                                    b.penetrate--;
-                                    if(b.penetrate<=0){
-                                        b.fade_remove=33;
-                                        b.alpha=255;
-                                        b.ignore_hit=1;
-                                    }
 
-
+                            if(!b.invincible){
+                                if(!a.invincible && a.state==stg_const.PLAYER_NORMAL){
+                                    a.state=stg_const.PLAYER_HIT;
+                                    a.invincible= a.counter_bomb_time;
                                 }
+                                /*
+                                b.penetrate--;
+                                if(b.penetrate<=0){
+                                    b.fade_remove=33;
+                                    b.alpha=255;
+                                    b.ignore_hit=1;
+                                }*/
+
+
+                            }
                         }
 
                         if(b.type==stg_const.OBJ_ENEMY){
@@ -273,25 +313,56 @@ function _stgMainLoop_Hit(){
                         if(b.type==stg_const.OBJ_ITEM){
                             if(b.content){
                                 for(var i in b.content){
-                                    if(!(a.content===undefined))a.content+= b.content;
+                                    a.content[i]=(a.content[i]||0)+ b.content[i];
                                 }
                             }
+                            stg_target=b;
                             if(b.on_collect)b.on_collect(a);
+                            stg_target=a;
+                            if(a.on_collect)a.on_collect(b);
                             stgDeleteObject(b);
                         }
                     }
                 }
             }
         }else {
-            for (var j in _hit_pool) {
-                var b = _hit_pool[j];
+            for (j in _hit_pool) {
+                b = _hit_pool[j];
                 if (stg_hit_check[s][b.side]) {
-                    var d = stgDist(a.hitby, b.hitdef);
+                    d = stgDist(a.hitby, b.hitdef);
+                    if (d < 0) {
+                        if(b.type==stg_const.OBJ_BULLET){
+                            if(b.penetrate>0) {
+                                a.hit_by_list.push(b);
+                                b.hit_list.push(a);
+                                stg_target=b;
+                                if(b.on_hit)b.on_hit(a);
+                                stg_target=a;
+                                if(a.on_hit_by)a.on_hit_by(b);
+                                b.penetrate--;
+                                if (b.penetrate <= 0) {
+                                    b.fade_remove = 33;
+                                    b.alpha = b.alpha||255;
+                                    b.ignore_hit = 1;
+                                }
+                            }
+                        }else{
+                            a.hit_by_list.push(b);
+                            b.hit_list.push(a);
+                            stg_target=b;
+                            if(b.on_hit)b.on_hit(a);
+                            stg_target=a;
+                            if(a.on_hit_by)a.on_hit_by(b);
+                        }
+                    }
+
+                    /*
                     if (d < 0) {
                         //console.log(b);
                         a.hit_by_list.push(b);
                         b.hit_list.push(a);
-                    }
+                        if(a.on_hit_by)a.on_hit_by(b);
+                    }*/
                 }
             }
         }
@@ -332,8 +403,8 @@ function _stgMainLoop_PlayerState(){
             if (a.active) {
                 a.slow = a.key[stg_const.KEY_SLOW];
 
-                if(a.invincible>0){
-                    a.invincible--;
+                //if(a.invincible>0){
+                    //a.invincible--;
                     if(a.invincible==0 && a.state==stg_const.PLAYER_REBIRTH){
                         a.state=stg_const.PLAYER_NORMAL;
                         a.invincible= a.start_time;
@@ -346,7 +417,7 @@ function _stgMainLoop_PlayerState(){
                         a.state=stg_const.PLAYER_REBIRTH;
                         a.invincible= a.rebirth_time;
                     }
-                }
+               // }
 
             }
 
@@ -471,12 +542,40 @@ function _stgMainLoop_Engine(){
                 _hit_by_pool.push(a);
                 a.hit_by_list=[];
             }
-            if(a.hitdef && !a.ignore_hit){
+            if(a.hitdef && !a.ignore_hit && !a.invincible){
                 a.hitdef.rpos[0]= a.pos[0]+ a.hitdef.pos[0];
                 a.hitdef.rpos[1]= a.pos[1]+ a.hitdef.pos[1];
                 a.hitdef.rd= a.rotate[2];
                 _hit_pool.push(a);
                 a.hit_list=[];
+            }
+            if(a.invincible)a.invincible--;
+            if(a.type==stg_const.OBJ_BULLET){
+                if(a.invincible && !a._shoted){
+                    if(!a._shot_scale) {
+                        a._shot_scale = [a.render.scale[0], a.render.scale[1]];
+                        a._shot_alpha = a.alpha||255;
+                    }
+                        var ms= a.invincible/6+1;
+                        if(ms>2)ms=2;
+                        a.render.scale[0]= a._shot_scale[0]*ms;
+                        a.render.scale[1]= a._shot_scale[1]*ms;
+                        a.alpha= 100;
+                        a.update=1;
+
+                }else{
+                    if(a._shot_scale){
+                        a.render.scale[0]= a._shot_scale[0];
+                        a.render.scale[1]= a._shot_scale[1];
+                        delete a._shot_scale;
+                        a.alpha= a._shot_alpha;
+                        delete a._shot_alpha;
+                        a.update=1;
+                    }else {
+                        a._shoted = 1;
+                        a.update=0;
+                    }
+                }
             }
             if(a.fade_remove){
                 if(a.alpha===undefined){
@@ -699,10 +798,33 @@ function _addPlayer(sPlayerName,iSlot){
 function stgStart(){
     stg_game_state=stg_const.GAME_MENU;
     _stgChangeGameState(stg_const.GAME_MENU);
-    stgCreateRefresher();
     stg_players_number=0;
     stg_players=[];
+
+    requestAnimationFrame(_stgStart2);
+    var time;
+    function _stgStart2(t){
+        time=t;
+        requestAnimationFrame(_stgStart4)
+    }
+    function _stgStart4(t){
+        time=t;
+        requestAnimationFrame(_stgStart3)
+    }
+    function _stgStart3(t){
+        time=1000/(t-time);
+        if(time<55 || time>65){
+            console.log("Your screen seems not refreshing at 60fps. VSync disabled.");
+            console.log(time);
+            stg_refresher_type=1;
+        }
+        else{
+            stg_refresher_type=0;
+        }
+        stgCreateRefresher();
+    }
 }
+
 
 function stgDeleteSelf(){
     stgDeleteObject(stg_target);
@@ -716,4 +838,10 @@ function stgCloseLevel(){
     _stgEndLevel();
     _stgChangeGameState(stg_const.GAME_MENU);
     stg_common_data.menu_state=1;
+}
+
+function stgGetRandomPlayer(){
+    var i=stg_players_number;
+    var k=(stg_rand(0,1)*i)>>0;
+    return stg_players[k];
 }

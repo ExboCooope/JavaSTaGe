@@ -53,9 +53,16 @@ var webgl_canvas;
 function webglCreateFromCanvas(canvas){
 
     var gl;
-    gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl");
+    var arg={preserveDrawingBuffer:true};
+    gl=canvas.getContext("webgl",arg)||canvas.getContext("experimental-webgl",arg);
     if(!gl)console.log("Cannot Create Webgl Context.");
     _gl=gl;
+    webgl_canvas=canvas;
+    stg_const.TRIANGLES=gl.TRIANGLES;
+    stg_const.TRIANGLE_FAN=gl.TRIANGLE_FAN;
+    stg_const.TRIANGLE_STRIP=gl.TRIANGLE_STRIP;
+    stg_const.LINE_LOOP=gl.LINE_LOOP;
+    stg_const.LINES=gl.LINES;
 }
 
 function webglCompileShader(shader){
@@ -87,6 +94,7 @@ function webglCompileShader(shader){
             t[2]=gl.getUniformLocation(shaderProgram,i);
         }
     }
+    shader.program=shaderProgram;
 }
 
 function _webGlUniformInput(shader,text,value){
@@ -95,7 +103,13 @@ function _webGlUniformInput(shader,text,value){
     var gl=_gl;
     if(!t)return;
     if(t[0]==0) {
-
+        var x=gl.createBuffer();
+        t.buffer=x;
+        gl.bindBuffer(gl.ARRAY_BUFFER, t.buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, value, gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(t[2]);
+        gl.vertexAttribPointer(t[2], t[1], gl.FLOAT, false, t[1]*4, 0);
+        return x;
     }else if(t[0]==1){
         if(t[1]==1){
             gl.uniform1fv(t[2],value);
@@ -111,7 +125,38 @@ function _webGlUniformInput(shader,text,value){
             gl.uniformMatrix3fv(t[2],false,value);
         }
     }else if(t[0]==2){
-        gl.uniform1i(t[2],value);
+
+        var tex=value;
+        if(!tex.webgl){
+            tex.webgl=1;
+            tex.gltex= _gl.createTexture();
+            _gl.bindTexture(_gl.TEXTURE_2D, tex.gltex);
+            _gl.texImage2D(_gl.TEXTURE_2D, 0, _gl.RGBA, _gl.RGBA, _gl.UNSIGNED_BYTE, tex);
+            _gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MIN_FILTER, _gl.LINEAR_MIPMAP_NEAREST);
+            _gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, _gl.LINEAR);
+            _gl.generateMipmap(_gl.TEXTURE_2D);
+        }
+        _gl.bindTexture(_gl.TEXTURE_2D, tex.gltex);
+        if(t[1]==0){
+            _gl.activeTexture(_gl.TEXTURE0);
+        }else if(t[1]==1){
+            _gl.activeTexture(_gl.TEXTURE1);
+        }
+        gl.uniform1i(t[2],t[1]);
+    }
+}
+function _webGlReput(shader,text,value){
+    var i=text;
+    var t=shader.input[i];
+    var gl=_gl;
+    if(!t)return;
+    if(t[0]==0) {
+        var x=value;
+        t.buffer=x;
+        gl.bindBuffer(gl.ARRAY_BUFFER, t.buffer);
+        gl.enableVertexAttribArray(t[2]);
+        gl.vertexAttribPointer(t[2], t[1], gl.FLOAT, false, t[1]*4, 0);
+        return x;
     }
 }
 

@@ -42,11 +42,16 @@ var default_2d_shader={
                 default_2d_shader.context.fillRect(0, 0, tgt.width, tgt.height);
             }
             default_2d_shader.mode=0;
-        }else if(tgt.type==stg_const.TEX_CANVAS3D){
+        }else if(tgt.type==stg_const.TEX_CANVAS3D || tgt.type==stg_const.TEX_CANVAS3D_TARGET){
+            _gl.disable(_gl.DEPTH_TEST);
+            _gl.bindFramebuffer(_gl.FRAMEBUFFER, tgt.buffer||null);
+            _gl.viewport(0,0,tgt.width,tgt.height);
             if(!default_2d_shader.glset){
                 webglCompileShader(default_2d_shader);
                 _webGlUniformInput(default_2d_shader,"uWindow",webgl2DMatrix(tgt.width,tgt.height));
+                default_2d_shader.glset=1;
             }
+            _gl.useProgram(default_2d_shader.program);
             default_2d_shader.context= _gl;
             default_2d_shader.mode=1;
             for(var i in default_2d_shader.dma_pool){
@@ -64,8 +69,8 @@ var default_2d_shader={
 
     }, //每次渲染开始前，会调用，用来初始化该次渲染的数据，存入procedure_cache中
     object_frame:function(object,render,procedureName){
-        if(default_2d_shader.mode==0) {
-            var pool = default_2d_shader.pool;
+        if(this.mode==0) {
+            var pool = this.pool;
             var l = object.layer;
             if (!pool[l])pool[l] = {};
             if (!render.texture)return;
@@ -85,16 +90,16 @@ var default_2d_shader={
             t.scale = render.scale;
             t.alpha = (object.alpha===undefined?1:object.alpha/255);
             pool[l][render.texture].push(t);
-        }else if(default_2d_shader.mode==1){
+        }else if(this.mode==1){
             if (!render.texture)return;
             var t;
-            var q=default_2d_shader.dma_pool[object.layer];
+            var q=this.dma_pool[object.layer];
             if(!q) {
                 q = {};
-                default_2d_shader.dma_pool[object.layer]=q;
+                this.dma_pool[object.layer]=q;
             }
             if(!q[render.texture]){
-                t=new WebglDMA(default_2d_shader,1000);
+                t=new WebglDMA(this,1000);
                 t.frameStart();
                 q[render.texture]=t;
                 t.objectParser = shader1_object_parser;
@@ -107,6 +112,7 @@ var default_2d_shader={
             if(!render.webgl || object.update){
                 render.webgl=1;
                 var tex=stg_textures[render.texture];
+                /*
                 if(!tex.webgl){
                     tex.webgl=1;
                     tex.gltex= _gl.createTexture();
@@ -116,14 +122,15 @@ var default_2d_shader={
                     _gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, _gl.LINEAR);
                     _gl.generateMipmap(_gl.TEXTURE_2D);
                 }
+                */
                 //if(!tex.width){
                 //}
                 object.render.aUVT=webglTextureAssign(null,object.render.uvt,tex.width,tex.height);
                 object.render.aRec=new Float32Array([
-                        render.offset[0],render.offset[1],
-                        render.offset[0]+render.uvt[2],render.offset[1],
-                        render.offset[0]+render.uvt[2],render.offset[1]+render.uvt[3],
-                        render.offset[0],render.offset[1]+render.uvt[3]
+                        render.offset[0]*render.scale[0],render.offset[1]*render.scale[1],
+                    (render.offset[0]+render.uvt[2])*render.scale[0],render.offset[1]*render.scale[1],
+                    (render.offset[0]+render.uvt[2])*render.scale[0],(render.offset[1]+render.uvt[3])*render.scale[1],
+                        render.offset[0]*render.scale[0],(render.offset[1]+render.uvt[3])*render.scale[1]
                     ]);
                 var ta=(object.alpha===undefined?1:object.alpha/255);
                 object.render.aColor= new Float32Array([1, 1, 1, ta, 1, 1, 1, ta, 1, 1, 1, ta, 1, 1, 1, ta]);
@@ -132,13 +139,13 @@ var default_2d_shader={
         }
     }, //对每个参与该procedure和shader的物体会调用一次，负责绘制或将物体渲染信息缓存起来
     draw_frame:function(procedureName){
-        if(default_2d_shader.mode==0) {
-            var pool = default_2d_shader.pool;
+        if(this.mode==0) {
+            var pool = this.pool;
             var l;
             var tn;
             var obj;
             var i;
-            var c = default_2d_shader.context;
+            var c = this.context;
             for (l = 0; l < pool.length; l++) {
                 if (pool[l]) {
                     for (tn in pool[l]) {
@@ -156,19 +163,20 @@ var default_2d_shader={
                     }
                 }
             }
-        }else if(default_2d_shader.mode==1){
-            for(var q in default_2d_shader.dma_pool){
-                for(var i in default_2d_shader.dma_pool[q]) {
-                    _gl.bindTexture(_gl.TEXTURE_2D, stg_textures[i].gltex);
-                    _gl.activeTexture(_gl.TEXTURE0);
-                    _webGlUniformInput(default_2d_shader, "texture", 0);
-                    default_2d_shader.dma_pool[q][i].draw();
+        }else if(this.mode==1){
+            _gl.useProgram(this.program);
+            for(var q in this.dma_pool){
+                for(var i in this.dma_pool[q]) {
+                   // _gl.bindTexture(_gl.TEXTURE_2D, stg_textures[i].gltex);
+                   // _gl.activeTexture(_gl.TEXTURE0);
+                    _webGlUniformInput(this, "texture", stg_textures[i]);
+                    this.dma_pool[q][i].draw();
                 }
             }
         }
     }, //每次渲染结束时会调用，如果将物体聚类的话，可以在这里统一绘制
     shader_finalize_procedure:function(procedureName){
-        default_2d_shader.pool=[];
+        this.pool=[];
     }, //移除procedure时会执行一次，用来释放资源
     template:{},
 
@@ -284,7 +292,9 @@ var default_2d_misc_shader={
                             c.fillText(obj.text||"",obj.x+ obj.cx, obj.y+obj.cy);
                         }
                     }else if(obj.type==3){
-                        c.drawImage(stg_textures[obj.texture],obj.x+ obj.cx, obj.y+obj.cy,obj.w,obj.h);
+                        if(stg_textures[obj.texture].type!=stg_const.TEX_CANVAS3D_TARGET){
+                            c.drawImage(stg_textures[obj.texture],obj.x+ obj.cx, obj.y+obj.cy,obj.w,obj.h);
+                        }
                     }
                 }
             }
@@ -391,3 +401,128 @@ var zoomer_shader={
 stg_shaders.testZoomer=zoomer_shader;
 
 
+
+var default_2d_prim_shader={
+    active:0,
+    context:null,
+    glset:0,
+    mode:0,
+    shader_init:function(){
+        if(_gl) {
+            webglCompileShader(this);
+            _gl.enable(_gl.BLEND);
+            _gl.blendEquation(_gl.FUNC_ADD);
+            _gl.blendFunc(_gl.SRC_ALPHA,_gl.ONE_MINUS_SRC_ALPHA);
+        }
+    }, //shader初始化程序，在这里获得shader的入口地址等
+    shader_finalize:function(){}, //shader的结束程序，负责释放资源
+    post_frame:function(procedureName){
+        var pro=stg_procedures[procedureName];
+        if(!pro){
+
+            return;
+        }
+        var tgt_n=pro.render_target;
+        var tgt=stg_textures[tgt_n];
+        if(!tgt){
+            return;
+        }
+        if(tgt.type==stg_const.TEX_CANVAS2D) {
+            return;
+        }else if(tgt.type==stg_const.TEX_CANVAS3D || tgt.type==stg_const.TEX_CANVAS3D_TARGET){
+            _gl.disable(_gl.DEPTH_TEST);
+            _gl.bindFramebuffer(_gl.FRAMEBUFFER, tgt.buffer||null);
+            _gl.viewport(0,0,tgt.width,tgt.height);
+            if(!this.glset){
+                webglCompileShader(this);
+                _webGlUniformInput(this,"uWindow",webgl2DMatrix(tgt.width,tgt.height));
+                this.glset=1;
+            }
+            _gl.useProgram(this.program);
+            this.context= _gl;
+            this.mode=1;
+
+        }
+
+    }, //每次渲染开始前，会调用，用来初始化该次渲染的数据，存入procedure_cache中
+    object_frame:function(object,render,procedureName){
+            var vtx=new Float32Array(render.count*2);
+            var tex=new Float32Array(render.count*2);
+            for(var i=0;i<render.count;i++){
+                vtx[i*2]=object.pos[0]+render.vtx[i][0];
+                vtx[i*2+1]=object.pos[1]+render.vtx[i][1];
+                tex[i*2]=render.tex[i][0];
+                tex[i*2+1]=render.tex[i][1];
+            }
+            if (!render.texture)return;
+            var t=stg_textures[render.texture];
+            _webGlUniformInput(this,"aPosition",vtx);
+            _webGlUniformInput(this,"aTexture",tex);
+            _webGlUniformInput(this, "texture",t );
+            if(t.script)t.script();
+            _gl.drawArrays(render.mode,0,render.count);
+
+    }, //对每个参与该procedure和shader的物体会调用一次，负责绘制或将物体渲染信息缓存起来
+    draw_frame:function(procedureName){
+
+    }, //每次渲染结束时会调用，如果将物体聚类的话，可以在这里统一绘制
+    shader_finalize_procedure:function(procedureName){
+
+    }, //移除procedure时会执行一次，用来释放资源
+    template:{},
+
+    vertex:"attribute vec2 aPosition;" +
+        //"attribute vec2 aOffset;" +
+        "attribute vec2 aTexture;" +
+        "attribute vec4 aColor;" +
+       // "attribute float aRotate;" +
+        "" +
+        "uniform vec2 uWindow;" +
+        "varying vec2 vTexture;" +
+        "varying vec4 vColor;" +
+        "void main( void ){" +
+        "vTexture = aTexture;" +
+        "vColor = aColor;" +
+        "vec2 r = aPosition;" +
+        "vec4 t = vec4( (r + aPosition)*uWindow+vec2(-1.0,1.0) , 0.0 , 1.0 );" +
+        "gl_Position = t;" +
+        "}",
+    fragment:"precision mediump float;" +
+        "uniform sampler2D texture;" +
+        "varying vec2 vTexture;" +
+        "varying vec4 vColor;" +
+        "void main(void){" +
+        "vec4 smpColor = texture2D(texture, vTexture);" +
+        "gl_FragColor  = vColor * smpColor;" +
+        //"gl_FragColor  = vColor;" +
+        "}",
+    input:{
+        aPosition:[0,2,null,0,1,0],
+        //aOffset:[0,2,null,0,0,1],
+        aTexture:[0,2,null,0,0,1],
+        aColor:[0,4,null,0,0,3],
+      //  aRotate:[0,1,null,0,1,4],
+        uWindow:[1,2],
+        texture:[2,0]
+    },
+    dma_pool:[]
+};
+stg_shaders["prim_shader"]=default_2d_prim_shader;
+
+function RenderPrim(){
+    StgRender.call(this,"prim_shader");
+    this.count=0;
+    this.mode=stg_const.TRIANGLES;
+    this.vtx=[];
+    this.tex=[];
+
+}
+RenderPrim.prototype.setVertexNum=function(n){
+    if(n>this.vtx.length){
+        for(var i=0;i<n-this.count;i++){
+            this.vtx.push([0,0]);
+            this.tex.push([0,0]);
+        }
+    }
+    this.count=n;
+};
